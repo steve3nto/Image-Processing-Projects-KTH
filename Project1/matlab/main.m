@@ -64,13 +64,8 @@ im_gauss_lpf = conv2(h_vertical,h_horizontal,im_gauss,'same');
 im_saltp_lpf = conv2(h_vertical,h_horizontal,im_saltp,'same');
 
 % median filter
-im_gauss_med = ones(size(im_gauss));
-for i=2:size(im_gauss)-1
-    for j=2:size(im_gauss)-1
-        roi = im_gauss(i-1:i+1,j-1:j+1); %3x3 mask around the pixel
-        im_gauss_med(i,j) = median(roi(:));
-    end
-end
+im_gauss_med = medfilt2(im_gauss);
+im_saltp_med = medfilt2(im_saltp);
 
 
 % Plot all figures and compare
@@ -94,6 +89,7 @@ title('result of lpf saltp noise')
 % Plot all histograms and compare
 figure(3)
 imhist(im2uint8(im./255));
+axis([0 255 0 max(hist(im(:),255))+50])
 title('original histogram')
 figure(4)
 subplot(2,2,1);
@@ -104,7 +100,55 @@ imhist(im2uint8(im_gauss_lpf./255));
 title('result of lpf of gaussian noise')
 subplot(2,2,3);
 imhist(im2uint8(im_saltp./255));
+axis([-5 260 0 max(hist(im_saltp(:),255))+50])
 title('saltp noise')
 subplot(2,2,4);
 imhist(im2uint8(im_saltp_lpf./255));
 title('result of lpf saltp noise')
+
+%% Frequency Domain Filtering
+im = double(imread('lena512.bmp'));
+% generate the blur kernel
+blur = myblurgen('gaussian',8);
+im_blur = conv2(im,blur,'same');
+figure(1)
+imshow(im_blur,[]);
+%remove edges
+% im_blur_2 = im_blur(10:size(im_blur,1)-10,10:size(im_blur,2)-10);
+% figure(2)
+% imshow(im_blur_2,[]);
+% just removing the edges doesn't remove discontinuities
+% in the periodic repetition of the image
+
+% %Apply raised cosine windowing
+[M, N] = size(im);
+% w1 = cos(linspace(-pi/2, pi/2, M));
+% w2 = cos(linspace(-pi/2, pi/2, N));
+% w = w1' * w2;
+
+% w1 = hanning(M);
+% w2 = hanning(N);
+% w = w1*w2';
+% 
+% im = im.*w;
+% im_blur = im_blur.*w;
+% imshow(im_blur,[]);
+
+%plot magnitude spectra of original image
+im_fft = fftshift(fft2(im));
+A = abs(im_fft);
+L = log(A + 1);
+figure(3)
+imshow(L,[]);
+title('magnitude spectra of original img')
+%plot magnitude spectra of blurred image
+im_fft_blur = fftshift(fft2(im_blur));
+A_blur = abs(im_fft_blur);
+L_blur = log(A_blur + 1);
+figure(4)
+imshow(L_blur,[]);
+title('magnitude spectra of blurred img')
+
+% reconstruction
+a = ifft2(im_fft);
+imshow(a,[])
