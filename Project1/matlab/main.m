@@ -111,7 +111,7 @@ im = double(imread('lena512.bmp'));
 % generate the blur kernel
 blur = myblurgen('gaussian',8);
 im_blur = conv2(im,blur,'same');
-figure(1)
+figure
 imshow(im_blur,[]);
 %remove edges
 % im_blur_2 = im_blur(10:size(im_blur,1)-10,10:size(im_blur,2)-10);
@@ -120,35 +120,40 @@ imshow(im_blur,[]);
 % just removing the edges doesn't remove discontinuities
 % in the periodic repetition of the image
 
-% %Apply raised cosine windowing
-[M, N] = size(im);
+% %Apply windowing
+% [M, N] = size(im);
 % w1 = cos(linspace(-pi/2, pi/2, M));
 % w2 = cos(linspace(-pi/2, pi/2, N));
 % w = w1' * w2;
-
+% 
 % w1 = hanning(M);
 % w2 = hanning(N);
 % w = w1*w2';
 % 
 % im = im.*w;
 % im_blur = im_blur.*w;
+% figure
 % imshow(im_blur,[]);
 
 %plot magnitude spectra of original image
 im_fft = fftshift(fft2(im));
 A = abs(im_fft);
 L = log(A + 1);
-figure(3)
+figure
 imshow(L,[]);
-title('magnitude spectra of original img')
-%plot magnitude spectra of blurred image
+title('magnitude spectrum of original img')
+%plot magnitude spectrums
 im_fft_blur = fftshift(fft2(im_blur));
 A_blur = abs(im_fft_blur);
 L_blur = log(A_blur + 1);
-figure(4)
+figure
 imshow(L_blur,[]);
-title('magnitude spectra of blurred img')
+title('magnitude spectrum of blurred img')
 
 % reconstruction
-a = ifft2(im_fft);
-imshow(a,[])
+im_out = ifft2(ifftshift(im_fft));
+im_blur_out = ifft2(ifftshift(im_fft_blur));
+figure
+imshow(im_out,[]);
+figure
+imshow(im_blur_out,[]);
