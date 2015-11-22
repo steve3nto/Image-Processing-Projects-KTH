@@ -200,7 +200,8 @@ title('restored');
 
 %try of own implementation:
 K = noise_var/imvar; %SNR ratio estimation (arbitrary)
-H = fftshift(fft2(b, 1024, 1024)); %fft of blur (passed as argument)
+b2 = padarray(b,[2 256], 'both');
+H = fftshift(fft2(b)); %fft of blur (passed as argument)
 H_mag = H.*conj(H);
 
 %filter = (1./H) .* (H_mag./(H_mag+K)); %more computations
@@ -211,7 +212,7 @@ g = padarray(g,[256 256], 'both');
 out_freq = filter .* fftshift(fft2(g));
 
 out = ifft2(fftshift(out_freq));
-%out = out(256:768,256:768);
+out = out(220:800,220:800);
 
 figure
 imshow(out,[0,255]);
