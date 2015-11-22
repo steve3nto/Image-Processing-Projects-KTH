@@ -164,13 +164,14 @@ title('blurred image');
 % weiner filtering on distorted (blurred + nosied) image
 %copy this to separate function
 
-im = double(imread('lena512.bmp'));
+im = double(imread('boats512_outoffocus.bmp'));
 b = myblurgen('gaussian',8); %% blur function
-g = imfilter(im,b,'same'); %% degraded image (w/o noise)
+%g = imfilter(im,b,'same'); %% degraded image (w/o noise)
+g = im;
 
 noise_var = 0.0833; %% noise variance
 noise = sqrt(noise_var).*randn(size(g)); %n represents quanization error
-g = g + noise;
+%g = g + noise;
 
 figure
 imshow(g,[]);
@@ -188,6 +189,9 @@ title('blurred image');
 
 imvar = var(g(:));
 
+PSF = fspecial('gaussian',60,10);
+g = edgetaper(g,PSF);
+
 wfiltered = deconvwnr(g,b,noise_var/imvar);
 
 figure
@@ -195,14 +199,20 @@ imshow(wfiltered,[0,255]);  % not sure why are we getting these edge artifacts
 title('restored');
 
 %try of own implementation:
-K = 0.05; %SNR ratio estimation (arbitrary)
-H = fftshift(fft2(b)); %fft of blur (passed as argument)
+K = noise_var/imvar; %SNR ratio estimation (arbitrary)
+H = fftshift(fft2(b, 1024, 1024)); %fft of blur (passed as argument)
 H_mag = H.*conj(H);
 
-filter = (1./H) * (H_mag./(H_mag+K));
-out = conv2(g,ifft2(fftshift(filter)),'same');
+%filter = (1./H) .* (H_mag./(H_mag+K)); %more computations
+filter = conj(H) ./ (H_mag + K);
+
+out_freq = filter .* fftshift(fft2(g,1024,1024));
+
+out = ifft2(fftshift(out_freq));
+out = out(1:512,1:512);
+
 figure
-imshow(out);
+imshow(out,[0,255]);
 title('self restored');
 %end
 
