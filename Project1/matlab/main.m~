@@ -193,15 +193,15 @@ figure
 imshow(wfiltered,[0,255]);  % not sure why are we getting these edge artifacts
 title('restored');
 
-%try of own implementation:
+%and now own implementation:
 K = 0.05; %SNR ratio estimation (arbitrary)
-H = fftshift(fft2(b)); %fft of blur (passed as argument)
+H = fft2(b) %fft of blur (passed as argument)
 H_mag = H.*conj(H);
 
-filter = (1./H) * (H_mag./(H_mag+K));
-out = conv2(g,ifft2(fftshift(filter)),'same');
+filter = (1./H) * (H_mag/(H_mag+K))
+out = conv(ifft2(filter),g,'same');
 figure
-imshow(out);
+imshow(out,[0,255]);
 title('self restored');
-%end
+%end(
 
