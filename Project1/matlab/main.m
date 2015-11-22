@@ -136,6 +136,7 @@ imshow(im_blur,[]);
 % imshow(im_blur,[]);
 
 %plot magnitude spectra of original image
+
 im_fft = fftshift(fft2(im));
 A = abs(im_fft);
 L = log(A + 1);
