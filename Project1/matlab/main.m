@@ -6,6 +6,7 @@ imshow(im);
 figure(2)
 imhist(im);
 
+
 % reduce the contrast of the image by 
 % linearly mapping the range [0, 255] to [b, b+a*255]
 a = 0.2;
@@ -20,6 +21,7 @@ figure(3)
 imshow(im_lowc);
 figure(4)
 imhist(im_lowc);
+axis([0 255 0 max(hist(double(im_lowc(:)),255))+500])
 
 % Perform histogram equalization to improve the low contrast image
 pdf = histcounts(im_lowc(:),[0:256]);
@@ -37,6 +39,7 @@ figure(5)
 imshow(im_eq);
 figure(6)
 imhist(im_eq);
+axis([0 255 0 max(hist(double(im_eq(:)),255))+500])
 % The histogram is not flat because discrete equalization is a one to one
 % mapping between values(ignoring rounding that can merge together some bins)
 % thus the histogram has the same "shape" (peaks are identifiable),
@@ -110,6 +113,11 @@ title('result of lpf saltp noise')
 im = double(imread('lena512.bmp'));
 % generate the blur kernel
 blur = myblurgen('gaussian',8);
+% Visualize transfer function
+B = fftshift(fft2(blur,512,512));
+imshow(log(1+abs(B)),[]);
+
+
 im_blur = conv2(im,blur,'same');
 figure
 imshow(im_blur,[]);
@@ -161,60 +169,61 @@ figure
 imshow(im_blur_out,[]);
 title('blurred image');
 
-% weiner filtering on distorted (blurred + nosied) image
-%copy this to separate function
+% Image dublurring
+im = double(imread('lena512.bmp'));
+b = myblurgen('gaussian',8); %gaussian blur function
+g = imfilter(im,b,'same'); % degraded image (w/o noise)
 
-im = double(imread('boats512_outoffocus.bmp'));
-b = myblurgen('gaussian',8); %% blur function
-%g = imfilter(im,b,'same'); %% degraded image (w/o noise)
-g = im;
-
-noise_var = 0.0833; %% noise variance
-noise = sqrt(noise_var).*randn(size(g)); %n represents quanization error
-%g = g + noise;
+%Add guassian noise, modeling quantization error
+noise_var = 0.0833; 
+noise = sqrt(noise_var).*randn(size(g)); 
+g = g + noise;
 
 figure
 imshow(g,[]);
-title('blurred image');
+title('blurred noisy image');
 
-%starting here:
-%function wiener = weiner(g,n,var)
+[f, f_med] = deblur(g,b,noise_var);
+figure
+imshow(f,[0,255]);
+title('wiener deblurred');
+figure
+imshow(f_med,[0 255]);
+title('wiener deblurred + median');
 
-%fss = fft(autocorr(g(:)));
-%fnn = fft(autocorr(noise(:)));
-%h = fss./(fss+fnn);
 
-%nope
-%imshow(conv2(g,h,'same'),[]);
-
-imvar = var(g(:));
-
-PSF = fspecial('gaussian',60,10);
-%g = edgetaper(g,PSF);
-
-wfiltered = deconvwnr(g,b,noise_var/imvar);
+%test on cabin with strong out of focus blur
+im2 = double(imread('cabin512.bmp'));
+b2 = myblurgen('outoffocus',8); %gaussian blur function
+g2 = imfilter(im2,b2,'same'); % degraded image (w/o noise)
+g2 = g2 + noise;
 
 figure
-imshow(wfiltered,[0,255]);  % not sure why are we getting these edge artifacts
-title('restored');
+imshow(g2,[]);
+title('blurred noisy image');
 
-%try of own implementation:
-K = noise_var/imvar; %SNR ratio estimation (arbitrary)
-H = fftshift(fft2(b, 1024, 1024)); %fft of blur (passed as argument)
-H_mag = H.*conj(H);
+[f2, f2_med] = deblur(g2,b2,noise_var);
+figure
+imshow(f2,[0,255]);
+title('wiener deblurred');
+figure
+imshow(f2_med,[0 255]);
+title('wiener deblurred + median');
 
-%filter = (1./H) .* (H_mag./(H_mag+K)); %more computations
-filter = conj(H) ./ (H_mag + K);
-
-g = padarray(g,[256 256], 'both');
-
-out_freq = filter .* fftshift(fft2(g));
-
-out = ifft2(fftshift(out_freq));
-%out = out(256:768,256:768);
+% Try matlab implementations
+wnr_deblur = deconvwnr(g2,b2,noise_var/var(g2(:))); 
+reg_deblur = deconvreg(g2,b2);
+lucy_deblur = deconvlucy(g2,b2);
 
 figure
-imshow(out,[0,255]);
-title('self restored');
-%end
+imshow(wnr_deblur,[0,255]);
+title('matlab wiener deblurred');
+figure
+imshow(reg_deblur,[0 255]);
+title('matlab regularized least sqaurea');
+figure
+imshow(lucy_deblur,[0 255]);
+title('Lucy-Richardson method');
 
+
+%imwrite(f2_med./255,'cabin_med_restored.png')
