@@ -27,8 +27,6 @@ for k=0:M-1
     end
 end
 
-A
-
 Y = A*X*A';
 
 end
