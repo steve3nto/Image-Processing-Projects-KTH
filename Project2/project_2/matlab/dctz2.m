@@ -1,7 +1,6 @@
 function[Y] = dctz2(X)
-%Discrete Cosine Transform of 8x8 block
+% Discrete Cosine Transform of 8x8 block
 %   X input matrix
-%   M block size
 %   Y output matrix
 
 % Making sure it works for both matrix inputs and structs
@@ -14,7 +13,7 @@ end
 
 if (M~=8)
     error('unexpected block size, should be 8x8');
-    Y = []
+    Y = [];
     return
 end
 
