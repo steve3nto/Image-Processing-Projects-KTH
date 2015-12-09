@@ -6,7 +6,7 @@ x = im2double(imread('peppers512x512.tif'));
 %Function definitions
 uniform_quantizer = @(x,ssize) round(x/ssize)*ssize;
 mse = @(x,y) sum(sum((y-x).^2))/(size(y,1) * size(y,2));
-PSNR = @(D) 10*log10(255^2/.D);
+PSNR = @(D) 10*log10(255^2./D);
 
 %DCT-1 and Inverse DCT of 8x8 white image
 white_8x8 = ones(8);
@@ -145,6 +145,11 @@ grid on;
 %% Task 3
 % filters are generated inside FWT2 using the DWTAnalysis and DWTSynthesis
 % functions
+
+im = 255*im2double(imread('harbour512x512.tif'));
+s = im(1,:);
+load db4  
+wavelet = db4;  %prototype for the 8-tap daubechies filters
  
 DWT = FWT2(im,wavelet,4);
 % Show scale 4 DWT coefficients
