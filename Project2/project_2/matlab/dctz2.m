@@ -27,7 +27,7 @@ for k=0:M-1
     end
 end
 
-A = dctmtx(8);
+A
 
 Y = A*X*A';
 

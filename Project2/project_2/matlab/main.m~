@@ -6,7 +6,7 @@ x = im2double(imread('peppers512x512.tif'));
 %Function definitions
 uniform_quantizer = @(x,ssize) round(x/ssize)*ssize;
 mse = @(x,y) sum(sum((y-x).^2))/(size(y,1) * size(y,2));
-PSNR = @(D) 10*log10(255^2/D);
+PSNR = @(D) 10*log10(255^2./D);
 
 %DCT-1 and Inverse DCT of 8x8 white image
 white_8x8 = ones(8);
@@ -86,35 +86,52 @@ PSNR(D)
 % TODO: commment why they are the same (orthonormal transform?)
 %
 
+%doing this manually is bad, yes.
 x = im2double(imread('peppers512x512.tif'));
 x = 255*x;
+x2 = im2double(imread('boats512x512.tif'));
+x2 = 255*x2;
+x3 = im2double(imread('harbour512x512.tif'));
+x3 = 255*x3;
 
 x_dct = blockproc(x,[8 8],@dctz2);
+x2_dct = blockproc(x2,[8 8],@dctz2);
+x3_dct = blockproc(x3,[8 8],@dctz2);
 
 ssizes = [1 2 4 8 16 32 64 128 256 512]';
 psnrs = zeros(size(ssizes));
 rates = zeros(size(ssizes));
 
-i=4; %for testing
 for i=1:size(ssizes)
     s=ssizes(i);
     y_coeff = uniform_quantizer(x_dct,s);
-    reconstruction_MSE = mse(x_dct, y_coeff);
+    y2_coeff = uniform_quantizer(x2_dct,s);
+    y3_coeff = uniform_quantizer(x3_dct,s);
+
+    %THIS WAS TO ESTIMATE PSNR FOR SINGLE IMAGE     
+%     reconstruction_MSE = mse(x_dct, y_coeff);
+%     reconstruction_PSNR = PSNR(reconstruction_MSE);
+
+    %PSNR for 3 images combined
+    reconstruction_MSE = mse([x_dct x2_dct x3_dct], [y_coeff, y2_coeff y3_coeff]);
     reconstruction_PSNR = PSNR(reconstruction_MSE);
     psnrs(i) = reconstruction_PSNR;
     y = blockproc(y_coeff,[8 8],@idctz2);
     
-    %todo process blocks of all images?
-    %calculate rates (hardcoded)
-    coefs = zeros(8,8,64*64);
+    y_coeffs = [y2_coeff, y2_coeff y2_coeff];
+    %calculate rates are hardcoded jbg.
+    
+    coefs = zeros(8,8,64*64); %for each of coeffs 64blocks * 3 images
     for w=1:8
         for h=1:8
-            index = 1;
-            for k=0:63
-                for l=0:63
-                    %get only DC coeffs
-                    coefs(w,h,index) = y_coeff((8*k)+w,(8*l)+h);
-                    index = index + 1;
+            for img=1:3
+                index = 1;
+                for k=0:63
+                    for l=0:63
+                        %get only DC coeffs
+                        coefs(w,h,64*(img-1)+index) = y_coeffs((8*k)+w,img*(8*l)+h);
+                        index = index + 1;
+                    end
                 end
             end
         end
@@ -122,18 +139,67 @@ for i=1:size(ssizes)
     
     %now calculate R
     H=zeros(8,8);
-    for w=:8
+    for w=1:8
         for h=1:8
             vals = squeeze(coefs(w,h,:));
             p = hist(vals,min(vals):s:max(vals));
             p = p/sum(p);
-            H(w,h) = -sum(p.*log2(p));
+            
+            H(w,h) = -sum(p.*log2(p+eps)); %eps added for log of 0 vals
         end
     end
     
+    rates(i) = mean2(H);
     
     %figure;
     %imshow(blockproc(y_coeff,[8 8],@idctz2),[]);
 end
 
-plot(psnrs,ssizes)
+
+plot(rates, psnrs, '+-', 'linewidth', 2);
+grid on;
+xlabel('[Bits per pixel] rate');
+ylabel('[dB] PSNR');
+
+%% Task 3
+% filters are generated inside FWT2 using the DWTAnalysis and DWTSynthesis
+% functions
+
+im = 255*im2double(imread('harbour512x512.tif'));
+s = im(1,:);
+load db4  
+wavelet = db4;  %prototype for the 8-tap daubechies filters
+ 
+DWT = FWT2(im,wavelet,4);
+% Show scale 4 DWT coefficients
+imshow(DWT/255);
+ 
+%Uniform Quantization of wavelet transform
+Lo_R = wavelet/norm(wavelet);   %reconstruction LPF
+Lo_D = wrev(Lo_R);  %decomposition LPF
+Hi_R = qmf(Lo_R);   %reconstruction HPF
+Hi_D = wrev(Hi_R);  %decomposition HPF
+ 
+[CA,CH,CV,CD] = dwt2(im,Lo_R,Hi_R);
+rec = idwt2(CA,CH,CV,CD,Lo_D,Hi_D);
+ 
+% step size for the quantizer, smaller step size is better
+stepq = 2.^[0 1 2 3 4 5 6 7 8 9];
+step_count = [1:length(stepq)];
+ 
+% Uniformely quantize values
+for k = step_count
+        CAq(:,:,k) = uniform_quantizer(CA,stepq(k));
+        CHq(:,:,k) = uniform_quantizer(CH,stepq(k));
+        CVq(:,:,k) = uniform_quantizer(CV,stepq(k));
+        CDq(:,:,k) = uniform_quantizer(CD,stepq(k));
+end
+% Reconstruct images
+for k = step_count
+        recq(:,:,k) = idwt2(CAq(:,:,k),CHq(:,:,k),CVq(:,:,k),CDq(:,:,k),Lo_D,Hi_D);
+        % compute mse
+        mserr(k) = mse(im,recq(:,:,k));
+end
+ 
+mserrdb_wav = 10*log10(mserr);
+Psnr_wav = PSNR(mserr);
