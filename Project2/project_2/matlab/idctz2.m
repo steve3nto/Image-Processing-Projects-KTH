@@ -9,8 +9,7 @@ if(isstruct(X))
     M = X.blockSize(1);
     X = X.data;
 else
-    M = size(X);
-    M = M(1);
+    M = size(X,1);
 end
 
 if (M~=8)
