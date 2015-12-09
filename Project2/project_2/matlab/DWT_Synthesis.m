@@ -30,8 +30,8 @@ end
 a_up = upsample(a,2);
 d_up = upsample(d,2);
 % symmetrically extend signal to prevent border effect
-a_ext = wextend('1D','ppd',a_up,length(p)-1);
-d_ext = wextend('1D','ppd',d_up,length(p)-1);
+a_ext = wextend('1D','sym',a_up,length(p)-1);
+d_ext = wextend('1D','sym',d_up,length(p)-1);
 % Filter 
 lp_rec = conv(a_ext,Lo_R,'same');
 hp_rec = conv(d_ext,Hi_R,'same');

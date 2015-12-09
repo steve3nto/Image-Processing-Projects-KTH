@@ -2,14 +2,14 @@
 clear
 im = im2double(imread('peppers512x512.tif'));
 s = im(56,:);
-load haar
-W = haar;  %prototype
+load db4
+W = db4;  %prototype
 
 %generate filters from prototype
-% Lo_R = W/norm(W);   %reconstruction LPF
-% Lo_D = wrev(Lo_R);  %decomposition LPF
-% Hi_R = qmf(Lo_R);   %reconstruction HPF
-% Hi_D = wrev(Hi_R);  %decomposition HPF
+Lo_R = W/norm(W);   %reconstruction LPF
+Lo_D = wrev(Lo_R);  %decomposition LPF
+Hi_R = qmf(Lo_R);   %reconstruction HPF
+Hi_D = wrev(Hi_R);  %decomposition HPF
 % 
 % %extend signals to remove edge problems
 % s_ext = wextend('1D','sym',s,size(W,2));
@@ -114,8 +114,15 @@ im_rec = IFWT2_single(DWT,wavelet);
 % end
 
 %FUUUUCK
-[CA,CH,CV,CD] = dwt2(im,'db10');
-rec = idwt2(CA,CH,CV,CD,'db10');
+
+%generate filters from prototype
+Lo_R = wavelet/norm(wavelet);   %reconstruction LPF
+Lo_D = wrev(Lo_R);  %decomposition LPF
+Hi_R = qmf(Lo_R);   %reconstruction HPF
+Hi_D = wrev(Hi_R);  %decomposition HPF
+
+[CA,CH,CV,CD] = dwt2(im,Lo_R,Hi_R);
+rec = idwt2(CA,CH,CV,CD,Lo_D,Hi_D);
 
 subplot(1,2,1)
 imshow(rec);

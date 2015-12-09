@@ -18,7 +18,7 @@ Hi_R = qmf(Lo_R);   %reconstruction HPF
 Hi_D = wrev(Hi_R);  %decomposition HPF
 
 %symmetrically extend signal to prevent border effect
-s_ext = wextend('1D','ppd',s,length(p)-1);
+s_ext = wextend('1D','sym',s,length(p)-1);
 
 %LPF to get approximation coefficients
 a1 = conv(s_ext,Lo_D,'same');
