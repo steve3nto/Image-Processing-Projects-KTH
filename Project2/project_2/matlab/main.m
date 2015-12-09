@@ -44,7 +44,7 @@ reconstruction_MSE_without_quantization = mse(block_idct, x)
 PSNR(reconstruction_MSE_without_quantization)
 
 %Applying uniform quantizer with step size of 1
-ss = 1; %step size
+ss = 6; %step size
 y_coeff = uniform_quantizer(block_dct,ss);
 
 y = blockproc(y_coeff,[8 8], @idctz2);
