@@ -6,7 +6,7 @@ x = im2double(imread('peppers512x512.tif'));
 %Function definitions
 uniform_quantizer = @(x,ssize) round(x/ssize)*ssize;
 mse = @(x,y) sum(sum((y-x).^2))/(size(y,1) * size(y,2));
-PSNR = @(D) 10*log10(255^2/.D);
+PSNR = @(D) 10*log10(255^2/D);
 
 %DCT-1 and Inverse DCT of 8x8 white image
 white_8x8 = ones(8);
@@ -122,60 +122,18 @@ for i=1:size(ssizes)
     
     %now calculate R
     H=zeros(8,8);
-    for w=1:8
+    for w=:8
         for h=1:8
             vals = squeeze(coefs(w,h,:));
             p = hist(vals,min(vals):s:max(vals));
             p = p/sum(p);
-            
-            H(w,h) = -sum(p.*log2(p+eps)); %fix eps
+            H(w,h) = -sum(p.*log2(p));
         end
     end
     
-    rates(i) = mean2(H);
     
     %figure;
     %imshow(blockproc(y_coeff,[8 8],@idctz2),[]);
 end
 
-
-plot(rates, psnrs, '+-', 'linewidth', 2);
-grid on;
-
-%% Task 3
-% filters are generated inside FWT2 using the DWTAnalysis and DWTSynthesis
-% functions
- 
-DWT = FWT2(im,wavelet,4);
-% Show scale 4 DWT coefficients
-imshow(DWT/255);
- 
-%Uniform Quantization of wavelet transform
-Lo_R = wavelet/norm(wavelet);   %reconstruction LPF
-Lo_D = wrev(Lo_R);  %decomposition LPF
-Hi_R = qmf(Lo_R);   %reconstruction HPF
-Hi_D = wrev(Hi_R);  %decomposition HPF
- 
-[CA,CH,CV,CD] = dwt2(im,Lo_R,Hi_R);
-rec = idwt2(CA,CH,CV,CD,Lo_D,Hi_D);
- 
-% step size for the quantizer, smaller step size is better
-stepq = 2.^[0 1 2 3 4 5 6 7 8 9];
-step_count = [1:length(stepq)];
- 
-% Uniformely quantize values
-for k = step_count
-        CAq(:,:,k) = uniform_quantizer(CA,stepq(k));
-        CHq(:,:,k) = uniform_quantizer(CH,stepq(k));
-        CVq(:,:,k) = uniform_quantizer(CV,stepq(k));
-        CDq(:,:,k) = uniform_quantizer(CD,stepq(k));
-end
-% Reconstruct images
-for k = step_count
-        recq(:,:,k) = idwt2(CAq(:,:,k),CHq(:,:,k),CVq(:,:,k),CDq(:,:,k),Lo_D,Hi_D);
-        % compute mse
-        mserr(k) = mse(im,recq(:,:,k));
-end
- 
-mserrdb_wav = 10*log10(mserr);
-Psnr_wav = PSNR(mserr);
+plot(psnrs,ssizes)
