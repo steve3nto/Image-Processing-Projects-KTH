@@ -1,4 +1,4 @@
-function[Y] = idctz(X)
+function[Y] = idctz2(X)
 %Inverse Discrete Cosine Transform of 8x8 block
 %   X input matrix
 %   M block size

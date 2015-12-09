@@ -1,4 +1,4 @@
-function[Y] = dctz(X)
+function[Y] = dctz2(X)
 %Discrete Cosine Transform of 8x8 block
 %   X input matrix
 %   M block size
