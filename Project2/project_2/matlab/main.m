@@ -180,14 +180,9 @@ hold;
 % filters are generated inside FWT2 using the DWTAnalysis and DWTSynthesis
 % functions
 
-<<<<<<< HEAD
-im = 255*im2double(imread('harbour512x512.tif'));
-
-
-=======
 im = 255*im2double(imread('peppers512x512.tif'));
 s = im(1,:);
->>>>>>> origin/master
+
 load db4  
 wavelet = db4;  %prototype for the 8-tap daubechies filters
  
@@ -227,14 +222,12 @@ end
 mserrdb_wav = 10*log10(mserr);
 Psnr_wav = PSNR(mserr);
 
-<<<<<<< HEAD
 % Compute entropy of each subband
-=======
+
 figure;
 imshow(recq(:,:,7),[]);
 title('DWT reconstruction for q=64');
 
->>>>>>> origin/master
 for k = step_count
     %vectors of wavelet coefficients
     A{k} = reshape(CAq(:,:,k),[1,size(CAq(:,:,k),1)*size(CAq(:,:,k),2)]);
@@ -260,14 +253,6 @@ for k = step_count
     en{k} = 0.25*(enA{k}+enH{k}+enV{k}+enD{k});
 end
 Entropy = cell2mat(en);
-<<<<<<< HEAD
-
-%use entropy as ideal bit rates per coefficient
-rates_wav = Entropy;
-
-plot(rates_wav, Psnr_wav, '+-', 'linewidth', 2);
-grid on;
-=======
  
 %use entropy as ideal bit rates per coefficient
 rates_wav = Entropy;
@@ -290,4 +275,3 @@ ylabel('[dB] PSNR');
 hold;
 plot(rates_wav, Psnr_wav, '+-', 'linewidth', 2);
 legend('DCT','DWT - Daubechies 8 wavelet');
->>>>>>> origin/master

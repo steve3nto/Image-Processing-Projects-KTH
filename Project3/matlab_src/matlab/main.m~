@@ -99,5 +99,5 @@ for j=1:length(q_step) %for each quantizer step
 end
 
 %covert to kbit/s
-ratesKBPS = rates .* ((video_height*video_width*FPS)/1000);
+rates = rates .* ((video_height*video_width*30)/1000);
 
