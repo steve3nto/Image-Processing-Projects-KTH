@@ -1,3 +1,4 @@
+clear;
 
 %% Task 2 - DCT based Image compression
 %
@@ -35,7 +36,7 @@ title('Original Image peppers 512x512');
 figure;
 imshow(block_dct);
 title('DCT coefficients');
-figure
+figure;
 imshow(block_idct);
 title('Reconstruction without quantization');
 
@@ -44,7 +45,7 @@ reconstruction_MSE_without_quantization = mse(block_idct, x)
 PSNR(reconstruction_MSE_without_quantization)
 
 %Applying uniform quantizer with step size of 1
-ss = 6; %step size
+ss = 1; %step size
 y_coeff = uniform_quantizer(block_dct,ss);
 
 y = blockproc(y_coeff,[8 8], @idctz2);
@@ -77,8 +78,8 @@ x255 = round(255*x);
 y255 = round(255*y); 
 
 %D = mse(y,x); % PSNR=72dB (for ss=1), where x,y are in range [0,1]
-D = mse(y255,x255); % PSNR=24dB (for q=1) which is more realistic
-PSNR(D)
+Dist = mse(y255,x255); % PSNR=24dB (for q=1) which is more realistic
+PSNR(Dist);
 
 
 %% Distortion and Bit-rate estimation
@@ -86,35 +87,59 @@ PSNR(D)
 % TODO: commment why they are the same (orthonormal transform?)
 %
 
+%doing this manually is bad, yes.
 x = im2double(imread('peppers512x512.tif'));
 x = 255*x;
+x2 = im2double(imread('boats512x512.tif'));
+x2 = 255*x2;
+x3 = im2double(imread('harbour512x512.tif'));
+x3 = 255*x3;
 
 x_dct = blockproc(x,[8 8],@dctz2);
+x2_dct = blockproc(x2,[8 8],@dctz2);
+x3_dct = blockproc(x3,[8 8],@dctz2);
 
 ssizes = [1 2 4 8 16 32 64 128 256 512]';
 psnrs = zeros(size(ssizes));
 rates = zeros(size(ssizes));
-
-i=4; %for testing
+i=7;
 for i=1:size(ssizes)
     s=ssizes(i);
     y_coeff = uniform_quantizer(x_dct,s);
-    reconstruction_MSE = mse(x_dct, y_coeff);
+    y2_coeff = uniform_quantizer(x2_dct,s);
+    y3_coeff = uniform_quantizer(x3_dct,s);
+
+    %THIS WAS TO ESTIMATE PSNR FOR SINGLE IMAGE     
+%     reconstruction_MSE = mse(x_dct, y_coeff);
+%     reconstruction_PSNR = PSNR(reconstruction_MSE);
+
+    %PSNR for 3 images combined
+    reconstruction_MSE = mse([x_dct x2_dct x3_dct], [y_coeff, y2_coeff y3_coeff]);
     reconstruction_PSNR = PSNR(reconstruction_MSE);
     psnrs(i) = reconstruction_PSNR;
     y = blockproc(y_coeff,[8 8],@idctz2);
     
-    %todo process blocks of all images?
-    %calculate rates (hardcoded)
-    coefs = zeros(8,8,64*64);
+    %show image for q=64 
+    if(i==7)
+        figure;
+        imshow(y,[]);
+        title('DCT reconstruction with q=64');
+    end
+    
+    y_coeffs = [y_coeff, y2_coeff y3_coeff];
+    %calculate rates are hardcoded jbg.
+     
+    coefs = zeros(8,8,64*64*1); %for each of coeffs 64blocks * 3 images
     for w=1:8
         for h=1:8
-            index = 1;
-            for k=0:63
-                for l=0:63
-                    %get only DC coeffs
-                    coefs(w,h,index) = y_coeff((8*k)+w,(8*l)+h);
-                    index = index + 1;
+            for img=1:1
+                index = 1;
+                for k=0:63
+                    for l=0:63
+                        %get only DC coeffs
+                        coefs(w,h,64*64*(img-1)+index) = y_coeffs((8*k)+w,img*(8*l)+h);
+                        index = index + 1;
+                    end
                 end
             end
         end
@@ -128,7 +153,7 @@ for i=1:size(ssizes)
             p = hist(vals,min(vals):s:max(vals));
             p = p/sum(p);
             
-            H(w,h) = -sum(p.*log2(p+eps)); %fix eps
+            H(w,h) = -sum(p.*log2(p+eps)); %eps added for log of 0 vals
         end
     end
     
@@ -138,20 +163,35 @@ for i=1:size(ssizes)
     %imshow(blockproc(y_coeff,[8 8],@idctz2),[]);
 end
 
+H_DCT = H;
+figure;
+surf(H_DCT);
+title('Average entropy of 8x8 DCT block coefficients');
+clear H;
 
+figure;
 plot(rates, psnrs, '+-', 'linewidth', 2);
+title('Performance vs bitrate (DCT)');
 grid on;
-
+xlabel('[Bits per pixel] rate');
+ylabel('[dB] PSNR');
+hold;
 %% Task 3
 % filters are generated inside FWT2 using the DWTAnalysis and DWTSynthesis
 % functions
 
+<<<<<<< HEAD
 im = 255*im2double(imread('harbour512x512.tif'));
 
 
+=======
+im = 255*im2double(imread('peppers512x512.tif'));
+s = im(1,:);
+>>>>>>> origin/master
 load db4  
 wavelet = db4;  %prototype for the 8-tap daubechies filters
  
+figure;
 DWT = FWT2(im,wavelet,4);
 % Show scale 4 DWT coefficients
 imshow(DWT/255);
@@ -187,7 +227,14 @@ end
 mserrdb_wav = 10*log10(mserr);
 Psnr_wav = PSNR(mserr);
 
+<<<<<<< HEAD
 % Compute entropy of each subband
+=======
+figure;
+imshow(recq(:,:,7),[]);
+title('DWT reconstruction for q=64');
+
+>>>>>>> origin/master
 for k = step_count
     %vectors of wavelet coefficients
     A{k} = reshape(CAq(:,:,k),[1,size(CAq(:,:,k),1)*size(CAq(:,:,k),2)]);
@@ -213,9 +260,34 @@ for k = step_count
     en{k} = 0.25*(enA{k}+enH{k}+enV{k}+enD{k});
 end
 Entropy = cell2mat(en);
+<<<<<<< HEAD
 
 %use entropy as ideal bit rates per coefficient
 rates_wav = Entropy;
 
 plot(rates_wav, Psnr_wav, '+-', 'linewidth', 2);
 grid on;
+=======
+ 
+%use entropy as ideal bit rates per coefficient
+rates_wav = Entropy;
+
+figure;
+plot(rates_wav, Psnr_wav, '+-', 'linewidth', 2);
+title('Performance vs bitrate (DWT)');
+grid on;
+xlabel('[Bits per pixel] rate');
+ylabel('[dB] PSNR');
+
+
+%plot em together
+figure;
+plot(rates, psnrs, '+-', 'linewidth', 2);
+title('Performance vs bitrate (DCT vs DWT)');
+grid on;
+xlabel('[Bits per pixel] rate');
+ylabel('[dB] PSNR');
+hold;
+plot(rates_wav, Psnr_wav, '+-', 'linewidth', 2);
+legend('DCT','DWT - Daubechies 8 wavelet');
+>>>>>>> origin/master

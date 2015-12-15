@@ -1,7 +1,6 @@
 function[Y] = idctz2(X)
-%Inverse Discrete Cosine Transform of 8x8 block
+% Inverse Discrete Cosine Transform of 8x8 block
 %   X input matrix
-%   M block size
 %   Y output matrix
 
 % Making sure it works for both matrix inputs and structs
@@ -9,13 +8,12 @@ if(isstruct(X))
     M = X.blockSize(1);
     X = X.data;
 else
-    M = size(X);
-    M = M(1);
+    M = size(X,1);
 end
 
 if (M~=8)
     error('unexpected block size, should be 8x8');
-    Y = []
+    Y = [];
     return
 end
 
