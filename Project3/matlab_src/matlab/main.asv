@@ -50,4 +50,4 @@ end
 % play the best one
 implay(uint8(Vid(:,:,:,1)),30)
 implay(uint8(Vid(:,:,:,4)),30)
-% 
+%
