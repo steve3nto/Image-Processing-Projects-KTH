@@ -101,3 +101,9 @@ end
 %covert to kbit/s
 ratesKBPS = rates .* ((video_height*video_width*FPS)/1000);
 
+figure;
+plot(ratesKBPS, meanPSNRquality, '+-', 'linewidth', 2);
+title('Performance vs bitrate (DCT)');
+grid on;
+xlabel('[Kbps] rate');
+ylabel('[dB] PSNR');

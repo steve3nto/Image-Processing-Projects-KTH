@@ -129,10 +129,10 @@ for i=1:size(ssizes)
     y_coeffs = [y_coeff, y2_coeff y3_coeff];
     %calculate rates are hardcoded jbg.
      
-    coefs = zeros(8,8,64*64*1); %for each of coeffs 64blocks * 3 images
+    coefs = zeros(8,8,64*64*3); %for each of coeffs 64blocks * 3 images
     for w=1:8
         for h=1:8
-            for img=1:1
+            for img=1:3
                 index = 1;
                 for k=0:63
                     for l=0:63
