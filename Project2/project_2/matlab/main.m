@@ -147,7 +147,8 @@ grid on;
 % functions
 
 im = 255*im2double(imread('harbour512x512.tif'));
-s = im(1,:);
+
+
 load db4  
 wavelet = db4;  %prototype for the 8-tap daubechies filters
  
@@ -162,12 +163,13 @@ Hi_R = qmf(Lo_R);   %reconstruction HPF
 Hi_D = wrev(Hi_R);  %decomposition HPF
  
 [CA,CH,CV,CD] = dwt2(im,Lo_R,Hi_R);
-rec = idwt2(CA,CH,CV,CD,Lo_D,Hi_D);
- 
+rec1 = idwt2(CA,CH,CV,CD,Lo_D,Hi_D);
+
+
 % step size for the quantizer, smaller step size is better
 stepq = 2.^[0 1 2 3 4 5 6 7 8 9];
 step_count = [1:length(stepq)];
- 
+
 % Uniformely quantize values
 for k = step_count
         CAq(:,:,k) = uniform_quantizer(CA,stepq(k));
@@ -184,3 +186,36 @@ end
  
 mserrdb_wav = 10*log10(mserr);
 Psnr_wav = PSNR(mserr);
+
+% Compute entropy of each subband
+for k = step_count
+    %vectors of wavelet coefficients
+    A{k} = reshape(CAq(:,:,k),[1,size(CAq(:,:,k),1)*size(CAq(:,:,k),2)]);
+    H{k} = reshape(CHq(:,:,k),[1,size(CHq(:,:,k),1)*size(CHq(:,:,k),2)]);
+    V{k} = reshape(CVq(:,:,k),[1,size(CVq(:,:,k),1)*size(CVq(:,:,k),2)]);
+    D{k} = reshape(CDq(:,:,k),[1,size(CDq(:,:,k),1)*size(CDq(:,:,k),2)]);
+    % compute bins to estimate pdfs
+    bins_A{k} = [min(A{k}):stepq(k):max(A{k})];
+    bins_H{k} = [min(H{k}):stepq(k):max(H{k})];
+    bins_V{k} = [min(V{k}):stepq(k):max(V{k})];
+    bins_D{k} = [min(D{k}):stepq(k):max(D{k})];
+    % histogram with bins to get pdfs
+    pdfA{k} = hist(A{k},bins_A{k})/length(A{k});
+    pdfH{k} = hist(H{k},bins_H{k})/length(H{k});
+    pdfV{k} = hist(V{k},bins_V{k})/length(V{k});
+    pdfD{k} = hist(D{k},bins_D{k})/length(D{k});
+    % compute hentropy from pdfs
+    enA{k} = -sum(pdfA{k}.*log2(pdfA{k}+eps));
+    enH{k} = -sum(pdfH{k}.*log2(pdfH{k}+eps));
+    enV{k} = -sum(pdfV{k}.*log2(pdfV{k}+eps));
+    enD{k} = -sum(pdfD{k}.*log2(pdfD{k}+eps));
+    % total hentropy / average
+    en{k} = 0.25*(enA{k}+enH{k}+enV{k}+enD{k});
+end
+Entropy = cell2mat(en);
+
+%use entropy as ideal bit rates per coefficient
+rates_wav = Entropy;
+
+plot(rates_wav, Psnr_wav, '+-', 'linewidth', 2);
+grid on;
