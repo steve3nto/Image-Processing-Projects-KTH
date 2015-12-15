@@ -55,8 +55,8 @@ for j=1:length(q_step)
 end
 
 % play the best one and the worst one
-implay(uint8(Vid(:,:,:,1)),30);
-implay(uint8(Vid(:,:,:,4)),30);
+implay(uint8(Vid(:,:,:,1)),FPS);
+implay(uint8(Vid(:,:,:,4)),FPS);
 % 
 
 %calculate mean PSNRs
