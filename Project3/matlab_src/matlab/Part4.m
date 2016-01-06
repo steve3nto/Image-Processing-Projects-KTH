@@ -17,7 +17,7 @@ bSize = 16;
 dy_max = 10;
 dx_max = 10;
 % Different step sizes for Quantization of Block-DCT coefficients
-q_step = 2.^[0:9];
+q_step = 2.^[3:6];
 
 
 % Compute all the possible shifts. For +- 10pxls there are 
@@ -138,13 +138,10 @@ end
 
 %Now we have rates and errors for all frames. To simplify average all the
 %rates and set the rate as a constant in the optimization of the Lagrangian
-%function to choose mode
-AvgRate1 = mean(Rate1,1);
-AvgRate3 = mean(Rate3,1);
-% Play Videos
-%implay(uint8(Frames),FPS); 
-%implay(uint8(Residual),FPS);  
-%implay(uint8(Predicted3),FPS);
+%function to choose mode   
+AvgRate1 = (mean(Rate1,1)*bSize^2 + 1)/1000;   %Kbits/block
+AvgRate3 = (mean(Rate3,1)*bSize^2 + 2)/1000;   %Kbits/block
+
 
 %%%%%=====================================================%%%%%
 
@@ -152,12 +149,17 @@ AvgRate3 = mean(Rate3,1);
 AvgPSNR1 = mean(PSNR1,1);
 AvgRateKbps1 = mean(Rate1,1)*video_height*video_width*30/1000;
 
+AvgPSNR3 = mean(PSNR3,1);
+AvgRateKbps3 = mean(Rate3,1)*video_height*video_width*30/1000;
+
 figure;
-plot(fliplr(AvgRateKbps1), fliplr(AvgPSNR1), '+-', 'linewidth', 1);
+plot(fliplr(AvgRateKbps1), fliplr(AvgPSNR1),...
+    fliplr(AvgRateKbps3), fliplr(AvgPSNR3),'+-', 'linewidth', 1);
 title('Performance vs bitrate (BlockDCT inter-mode only)');
 grid on;
 xlabel('Rate [Kbps]');
 ylabel('PSNR [dB]');
+
 
 % Prepare Videos for writing
 % Framesw(:,:,1,:) = Frames;   %original
@@ -170,6 +172,11 @@ ylabel('PSNR [dB]');
 % open(v);
 % writeVideo(v,uint8(Reconstructed1w(:,:,:,:,4)));
 % close(v);
+
+% Play Videos
+%implay(uint8(Frames),FPS); 
+%implay(uint8(Residual),FPS);  
+%implay(uint8(Predicted3),FPS);
 
 %%%%%%=======================================================%%%%
 
