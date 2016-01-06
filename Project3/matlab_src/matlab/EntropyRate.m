@@ -7,8 +7,8 @@
 % step_q - integer step used to quantize the DCT coefficients in F 
 %
 % OUTPUT
-% rate - estimated bits needed to encode 1 dct coefficient
-%
+% rate - estimated bits needed to encode 1 dct coefficient 
+% it is equivalent to bits/pxl, since N_coeffs = N_pixels
 %
 function rate = EntropyRate( F,step_q )
     
