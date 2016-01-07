@@ -9,6 +9,10 @@ video_width = 176;   %must be divisible by bSize
 video_height = 144;  %must be divisible by bSize
 FPS = 30;
 Nframes = 50;  %to be imported
+
+% test frames
+test = 255*imresize(checkerboard(100),[video_height video_width]);
+
 % Block Size for motion compensation
 bSize = 16;
 Nblocks = video_width*video_height/(bSize^2);
@@ -19,9 +23,9 @@ dx_max = 10;
 q_step = 2.^(3:6);
 
 % Lagrange multiplier for optimization in choice of coding mode
-% To be tuned so that DistortionCOst roughly== RateCost
+% To be tuned so that DistortionCOst roughly == RateCost
 lambda12 = 0.0005*q_step.^2;
-lambda123 = 0.0001*q_step.^2;
+lambda123 = 0.0003*q_step.^2;
 
 % Compute all the possible shifts. For +- 10pxls there are 
 % 441 possible motion vectors - 8bits needed without entropy coding.
@@ -44,8 +48,9 @@ FramesPadded = zeros(video_height+2*dy_max,...
                      video_width+2*dx_max,Nframes);
 for f=1:Nframes
     Frames(:,:,f) = V{f,1};
+    %Frames(:,:,f) = test;
     % Pad with zeros around to handle the borders in the motion_vec_search
-    FramesPadded(:,:,f) = padarray(V{f,1},[dy_max dx_max]);
+    FramesPadded(:,:,f) = padarray(Frames(:,:,f),[dy_max dx_max]);
 end
 
 FramesDCTq = zeros(video_height,video_width,Nframes,length(q_step));
@@ -269,6 +274,10 @@ Nbits3(1,:) = R1*Nblocks;  %bits used for intra mode of 1st frame
 for f=1:Nframes-1 
     for q=1:length(q_step)
         
+        %Pad to take into account edges in motion vectors
+        %predictions
+        Padded = padarray(Encoded3(:,:,f,q),[dy_max dx_max]);
+        
         bCount = 1;
         ww = 1:bSize; %indices to get 16x16 blocks
         hh = 1:bSize;
@@ -282,13 +291,15 @@ for f=1:Nframes-1
                     Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q)).^2;
                 D2 = sum(Diff2(:))/numel(Diff2(:));
                 
+                
+                
                 % Compute motion compensated coordinates
                 dy = MotVecs(1,bCount,f);
                 dx = MotVecs(2,bCount,f);
-                y_compensated = bSize*(h-1) + dy + hh;
-                x_compensated = bSize*(w-1) + dx + ww;
+                y_compensated = bSize*(h-1) + dy + hh + dy_max;
+                x_compensated = bSize*(w-1) + dx + ww + dx_max;
                 Diff3 = (Frames(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1) - ...
-                    Encoded3(y_compensated,x_compensated,f,q)).^2;
+                    Padded(y_compensated,x_compensated)).^2;
                 D3 = sum(Diff3(:))/numel(Diff3(:));    
                 
                 % Encode next block with the mode that minimizes the
@@ -313,7 +324,7 @@ for f=1:Nframes-1
                         Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q);
                 else   %inter mode, take previous block and shift it
                     Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
-                        Encoded3(y_compensated,x_compensated,f,q);
+                        Padded(y_compensated,x_compensated);
                 end
                 
                 bCount = bCount+1;
@@ -330,8 +341,8 @@ figure;
 bar(mode_hist123,'stacked');
 title('Distribution of modes selected in encoding as a function of quantizer steps');
 legend('Intra mode','Copy mode','Inter Mode','location','best');
-xlabel('Increasing quantizer step');
-ylabel('Number of 16x16 blocks');
+xlabel('Increasing Quantizer Step');
+ylabel('Number of 16x16 Blocks');
 
 % Compute MSE and PSNR for encoder2 and encoder3
 mse2 = zeros(1,length(q_step));
@@ -366,7 +377,7 @@ plot(fliplr(RateKbps1), fliplr(PSNR1),'r+-');
 plot(fliplr(RateKbps2), fliplr(PSNR2),'g+-');
 plot(fliplr(RateKbps3), fliplr(PSNR3),'b+-');
 %plot(fliplr(RateKbps3only), fliplr(PSNR3only),'k+-');
-title('Performance vs bitrate (BlockDCT inter-mode only)');
+title('Performance vs Bitrate');
 grid on;
 legend('Encoder1 - intra mode','Encoder 2 - intra and copy modes',...
     'Encoder3 - intra, copy and inter modes','location','best');
