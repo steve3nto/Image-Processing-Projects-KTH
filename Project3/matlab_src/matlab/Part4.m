@@ -391,10 +391,11 @@ Residualqw(:,:,1,:,:) = Residualq;  %residual of mode 3
 Predicted3qw(:,:,1,:,:) = Predicted3q; %mode 3 only without summing residuals
 MotionCompqw(:,:,1,:,:) = MotionCompq;   %mode 3 only adding residuals
 Encoded1w(:,:,1,:,:) = Encoded1; %intra mode only
+Encoded2w(:,:,1,:,:) = Encoded2; %intra and copy
 Encoded3w(:,:,1,:,:) = Encoded3; %All 3 modes available
-% Write Videos
-% v = VideoWriter('Results\ResidualsQuantized.avi','Grayscale AVI');
-% open(v);
+%Write Videos
+v = VideoWriter('Results\Encoded3.avi','Grayscale AVI');
+open(v);
 % for q=1:length(q_step)
 %     minv = min(Residualqw(:,:,:,:,q));
 %     MIN = min(minv(:));
@@ -403,7 +404,8 @@ Encoded3w(:,:,1,:,:) = Encoded3; %All 3 modes available
 %     towrite = (Residualqw(:,:,:,:,q)-MIN)/(MAX-MIN);
 %     writeVideo(v,towrite);
 % end
-% close(v);
+writeVideo(v,uint8(Encoded3w(:,:,:,:,4)));
+close(v);
 
 % Play Videos
 % implay(uint8(Frames),FPS); 
