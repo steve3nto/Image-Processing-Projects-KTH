@@ -16,11 +16,12 @@ Nblocks = video_width*video_height/(bSize^2);
 dy_max = 10;
 dx_max = 10;
 % Different step sizes for Quantization of Block-DCT coefficients
-q_step = 2.^[3:6];
+q_step = 2.^(3:6);
 
 % Lagrange multiplier for optimization in choice of coding mode
 % To be tuned so that DistortionCOst roughly== RateCost
-lambda = 0.0005*q_step.^2;
+lambda12 = 0.0005*q_step.^2;
+lambda123 = 0.0001*q_step.^2;
 
 % Compute all the possible shifts. For +- 10pxls there are 
 % 441 possible motion vectors - 8bits needed without entropy coding.
@@ -74,16 +75,19 @@ PSNR2f = zeros(Nframes,length(q_step));
 Rate2f = zeros(Nframes,length(q_step));
 
 %rates (bits per block) for mode 2
-R1 = mean(Rate1f,1)*bSize^2 + 1;  %intra mode
-R2 = ones(1,4);                   %copy mode
+R1 = mean(Rate1f,1)*bSize^2 + 1;        %intra mode
+R2 = ones(1,length(q_step));            %copy mode
 
-lambda = 0.0005*q_step.^2; %play with lambda values to see effect on modes
+Rates = [R1;R2];
 
 % Keep selected modes vector
 Mode12 = zeros(Nblocks,Nframes,length(q_step));
 Mode12(:,1,:) = 1;  % cannot copy the first frame
 
 % Mode 2 - Conditional replenishment
+
+Nbits2 = zeros(Nframes,q); %bits used for encoding of frame 
+Nbits2(1,:) = R1*Nblocks;  %bits used for intra mode of 1st frame
 
 % Set first frame to intra coded - since it is the only coding possible for
 % the first frame
@@ -93,8 +97,8 @@ end
 
 for f=1:Nframes-1
     for q=1:length(q_step)
-        ww = [1:bSize];
-        hh = [1:bSize];
+        ww = 1:bSize;
+        hh = 1:bSize;
         bCount = 1;
        
         for h = 1:video_height/bSize
@@ -108,12 +112,16 @@ for f=1:Nframes-1
                     Encoded2(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q)).^2;
                 D2 = sum(Diff2(:))/numel(Diff2(:));
                 
-                Cost1 = D1 + lambda(q)*R1(q); 
-                Cost2 = D2 + lambda(q)*R2(q);
+                % Choose mode that minimizes Lagrangian cost
+                Cost1 = D1 + lambda12(q)*R1(q); 
+                Cost2 = D2 + lambda12(q)*R2(q);
                 Costv = [Cost1,Cost2];
                 [MinCost,ChosenMode] = min(Costv);
                 
+                % Save mode selected for visualizations and insight
                 Mode12(bCount,f+1,q) = ChosenMode;
+                % Accumulate Nbits used to get total Bits/Frame
+                Nbits2(f+1,q) = Nbits2(f+1,q) + Rates(ChosenMode,q);
                 
                 % Encode video
                 if ChosenMode == 1    %intra mode - set to Encoded1
@@ -131,14 +139,18 @@ for f=1:Nframes-1
         
     end
 end
-
+clear Rates;
 % Visualize Modes distribution for encoder (1+2)
-%mode_hist = zeros(size(q),2);
+mode_hist12 = zeros(length(q_step),2);
 for q=1:length(q_step)
     mode_hist12(q,:) = hist(reshape(Mode12(:,:,q),1,numel(Mode12(:,:,q))),[1,2]);
 end
-bar(mode_hist12,'stacked');
 figure;
+bar(mode_hist12,'stacked');
+title('Distribution of modes selected in encoding as a function of quantizer steps');
+legend('Intra mode','Copy mode','location','best');
+xlabel('Increasing Quantizer Step');
+ylabel('Number of 16x16 Blocks');
 
 % Pad DCT quantized image, needed for computation of the motion compensated
 % image
@@ -178,8 +190,6 @@ Err3onlyf = zeros(Nframes,length(q_step));
 PSNR3onlyf = zeros(Nframes,length(q_step));
 Rate3onlyf = zeros(Nframes,length(q_step));
 
-% Set lambdas back to reasonable abount
-lambda = 0.0005*q_step.^2;
 
 for f=1:Nframes-1   
     % Motion Compensation encoder (mode 3)
@@ -239,9 +249,9 @@ AvgRate3 = (mean(Rate3onlyf,1)*bSize^2 + 2);   %Bits/block
 % Rates per block are constants, to simplify
 % +2 is added to signal the mode between the 3 available
 % Rates are in Bits/block
-R1 = mean(Rate1f,1)*bSize^2 + 2;  %intra mode
-R2 = 2*ones(1,4);                %copy mode
-R3 = mean(Rate3onlyf,1)*bSize^2 + 2;  %inter mode
+R1 = mean(Rate1f,1)*bSize^2 + 2;        %intra mode
+R2 = 2*ones(1,length(q_step));          %copy mode
+R3 = mean(Rate3onlyf,1)*bSize^2 + 2;    %inter mode
 
 Rates = [R1;R2;R3];
 
@@ -260,8 +270,8 @@ for f=1:Nframes-1
     for q=1:length(q_step)
         
         bCount = 1;
-        ww = [1:bSize]; %indices to get 16x16 blocks
-        hh = [1:bSize];
+        ww = 1:bSize; %indices to get 16x16 blocks
+        hh = 1:bSize;
         for h = 1:video_height/bSize
             for w = 1:video_width/bSize
                 % For each mode, distortions for encoding the next block
@@ -283,9 +293,9 @@ for f=1:Nframes-1
                 
                 % Encode next block with the mode that minimizes the
                 % Lagrangian cost
-                Cost1 = D1 + lambda(q)*R1(q); 
-                Cost2 = D2 + lambda(q)*R2(q);
-                Cost3 = D3 + lambda(q)*R3(q);
+                Cost1 = D1 + lambda123(q)*R1(q); 
+                Cost2 = D2 + lambda123(q)*R2(q);
+                Cost3 = D3 + lambda123(q)*R3(q);
                 % Select mode
                 Costv = [Cost1,Cost2,Cost3];
                 [MinCost,ChosenMode] = min(Costv);
@@ -312,23 +322,37 @@ for f=1:Nframes-1
     end
 end
 % Visualize Modes distribution for the most complex encoder
-
+mode_hist123 = zeros(length(q_step),3);
 for q=1:length(q_step)
     mode_hist123(q,:) = hist(reshape(Mode123(:,:,q),1,numel(Mode123(:,:,q))),[1,2,3]);
 end
+figure;
 bar(mode_hist123,'stacked');
+title('Distribution of modes selected in encoding as a function of quantizer steps');
+legend('Intra mode','Copy mode','Inter Mode','location','best');
+xlabel('Increasing quantizer step');
+ylabel('Number of 16x16 blocks');
 
-% Compute error for encoder3
+% Compute MSE and PSNR for encoder2 and encoder3
+mse2 = zeros(1,length(q_step));
+PSNR2 = zeros(1,length(q_step));
+mse3 = zeros(1,length(q_step));
+PSNR3 = zeros(1,length(q_step));
 for q=1:length(q_step)   
-        Diff =  (Encoded3(:,:,:,q)-Frames).^2;
-        mse3(1,q) = sum(Diff(:))/numel(Diff(:));
+        Diff_2 =  (Encoded2(:,:,:,q)-Frames).^2;
+        mse2(1,q) = sum(Diff_2(:))/numel(Diff_2(:));
+        PSNR2(1,q) = 10*log10(255^2/mse2(1,q));
+    
+        Diff_3 =  (Encoded3(:,:,:,q)-Frames).^2;
+        mse3(1,q) = sum(Diff_3(:))/numel(Diff_3(:));
         PSNR3(1,q) = 10*log10(255^2/mse3(1,q));
 end
 
-% Compute bitrate for encoder3 in Kbps
+% Compute bitrate for encoder2 and encoder3 in Kbps
+RateKbps2 = mean(Nbits2,1)*30/1000;
 RateKbps3 = mean(Nbits3,1)*30/1000;
 
-%Compute avges for mode 1 only and plot performance curve
+%Compute avges for encoder1
 PSNR1 = mean(PSNR1f,1);
 RateKbps1 = mean(Rate1f,1)*video_height*video_width*30/1000;
 
@@ -338,11 +362,14 @@ RateKbps3only = mean(Rate3onlyf,1)*video_height*video_width*30/1000;
 
 figure;
 hold on
-plot(fliplr(RateKbps1), fliplr(PSNR1),'b+-');
-plot(fliplr(RateKbps3only), fliplr(PSNR3only),'k+-');
-plot(fliplr(RateKbps3), fliplr(PSNR3),'r+-');
+plot(fliplr(RateKbps1), fliplr(PSNR1),'r+-');
+plot(fliplr(RateKbps2), fliplr(PSNR2),'g+-');
+plot(fliplr(RateKbps3), fliplr(PSNR3),'b+-');
+%plot(fliplr(RateKbps3only), fliplr(PSNR3only),'k+-');
 title('Performance vs bitrate (BlockDCT inter-mode only)');
 grid on;
+legend('Encoder1 - intra mode','Encoder 2 - intra and copy modes',...
+    'Encoder3 - intra, copy and inter modes','location','best');
 xlabel('Rate [Kbps]');
 ylabel('PSNR [dB]');
 hold off
@@ -355,17 +382,17 @@ MotionCompqw(:,:,1,:,:) = MotionCompq;   %mode 3 only adding residuals
 Encoded1w(:,:,1,:,:) = Encoded1; %intra mode only
 Encoded3w(:,:,1,:,:) = Encoded3; %All 3 modes available
 % Write Videos
-v = VideoWriter('Results\ResidualsQuantized.avi','Grayscale AVI');
-open(v);
-for q=1:length(q_step)
-    minv = min(Residualqw(:,:,:,:,q));
-    MIN = min(minv(:));
-    maxv = max(Residualqw(:,:,:,:,q));
-    MAX = max(maxv(:));
-    towrite = (Residualqw(:,:,:,:,q)-MIN)/(MAX-MIN);
-    writeVideo(v,towrite);
-end
-close(v);
+% v = VideoWriter('Results\ResidualsQuantized.avi','Grayscale AVI');
+% open(v);
+% for q=1:length(q_step)
+%     minv = min(Residualqw(:,:,:,:,q));
+%     MIN = min(minv(:));
+%     maxv = max(Residualqw(:,:,:,:,q));
+%     MAX = max(maxv(:));
+%     towrite = (Residualqw(:,:,:,:,q)-MIN)/(MAX-MIN);
+%     writeVideo(v,towrite);
+% end
+% close(v);
 
 % Play Videos
 % implay(uint8(Frames),FPS); 
