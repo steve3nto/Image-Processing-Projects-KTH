@@ -73,23 +73,39 @@ Err2f = zeros(Nframes,length(q_step));
 PSNR2f = zeros(Nframes,length(q_step));
 Rate2f = zeros(Nframes,length(q_step));
 
-R1 = mean(Rate1f,1)*bSize^2 + 2;  %intra mode
-R2 = 2*ones(1,4);                 %copy mode
+%rates (bits per block) for mode 2
+R1 = mean(Rate1f,1)*bSize^2 + 1;  %intra mode
+R2 = ones(1,4);                   %copy mode
+
+lambda = 0.0005*q_step.^2; %play with lambda values to see effect on modes
+
+% Keep selected modes vector
+Mode12 = zeros(Nblocks,Nframes,length(q_step));
+Mode12(:,1,:) = 1;  % cannot copy the first frame
 
 % Mode 2 - Conditional replenishment
+
+% Set first frame to intra coded - since it is the only coding possible for
+% the first frame
+for q=1:length(q_step)
+    Encoded2(:,:,1,q) = Encoded1(:,:,1,q);
+end
+
 for f=1:Nframes-1
     for q=1:length(q_step)
         ww = [1:bSize];
         hh = [1:bSize];
-        
-        for w = 1:video_width/bSize
-            for h = 1:video_height/bSize
+        bCount = 1;
+       
+        for h = 1:video_height/bSize
+            for w = 1:video_width/bSize
+                
                 % For modes 1 and 2 distortions for encoding the next block
                 Diff1 = (Frames(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1) - ...
                     Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q)).^2;
                 D1 = sum(Diff1(:))/numel(Diff1(:));
                 Diff2 = (Frames(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1) - ...
-                    Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q)).^2;
+                    Encoded2(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q)).^2;
                 D2 = sum(Diff2(:))/numel(Diff2(:));
                 
                 Cost1 = D1 + lambda(q)*R1(q); 
@@ -97,21 +113,32 @@ for f=1:Nframes-1
                 Costv = [Cost1,Cost2];
                 [MinCost,ChosenMode] = min(Costv);
                 
+                Mode12(bCount,f+1,q) = ChosenMode;
+                
                 % Encode video
                 if ChosenMode == 1    %intra mode - set to Encoded1
                     Encoded2(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
                         Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q);
                 elseif ChosenMode == 2  %copy block from previous frame
                     Encoded2(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
-                        Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q);
+                        Encoded2(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q);
                 end
+                
+                bCount = bCount + 1;
                 
             end
         end
         
     end
 end
-%
+
+% Visualize Modes distribution for encoder (1+2)
+%mode_hist = zeros(size(q),2);
+for q=1:length(q_step)
+    mode_hist12(q,:) = hist(reshape(Mode12(:,:,q),1,numel(Mode12(:,:,q))),[1,2]);
+end
+bar(mode_hist12,'stacked');
+figure;
 
 % Pad DCT quantized image, needed for computation of the motion compensated
 % image
@@ -151,6 +178,8 @@ Err3onlyf = zeros(Nframes,length(q_step));
 PSNR3onlyf = zeros(Nframes,length(q_step));
 Rate3onlyf = zeros(Nframes,length(q_step));
 
+% Set lambdas back to reasonable abount
+lambda = 0.0005*q_step.^2;
 
 for f=1:Nframes-1   
     % Motion Compensation encoder (mode 3)
@@ -216,8 +245,8 @@ R3 = mean(Rate3onlyf,1)*bSize^2 + 2;  %inter mode
 
 Rates = [R1;R2;R3];
 
-Mode = zeros(Nblocks,Nframes,length(q_step));
-Mode(:,1,:) = 1;  % cannot copy or inter code the first frame
+Mode123 = zeros(Nblocks,Nframes,length(q_step));
+Mode123(:,1,:) = 1;  % cannot copy or inter code the first frame
 Encoded3 = zeros(video_height,video_width,Nframes,length(q_step));
 % Set first frame to intra coded - since it is the only coding possible for
 % the first frame
@@ -233,17 +262,23 @@ for f=1:Nframes-1
         bCount = 1;
         ww = [1:bSize]; %indices to get 16x16 blocks
         hh = [1:bSize];
-        for w = 1:video_width/bSize
-            for h = 1:video_height/bSize
+        for h = 1:video_height/bSize
+            for w = 1:video_width/bSize
                 % For each mode, distortions for encoding the next block
                 Diff1 = (Frames(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1) - ...
                     Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q)).^2;
                 D1 = sum(Diff1(:))/numel(Diff1(:));
                 Diff2 = (Frames(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1) - ...
-                    Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q)).^2;
+                    Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q)).^2;
                 D2 = sum(Diff2(:))/numel(Diff2(:));
+                
+                % Compute motion compensated coordinates
+                dy = MotVecs(1,bCount,f);
+                dx = MotVecs(2,bCount,f);
+                y_compensated = bSize*(h-1) + dy + hh;
+                x_compensated = bSize*(w-1) + dx + ww;
                 Diff3 = (Frames(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1) - ...
-                    MotionCompq(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q)).^2;
+                    Encoded3(y_compensated,x_compensated,f,q)).^2;
                 D3 = sum(Diff3(:))/numel(Diff3(:));    
                 
                 % Encode next block with the mode that minimizes the
@@ -255,7 +290,7 @@ for f=1:Nframes-1
                 Costv = [Cost1,Cost2,Cost3];
                 [MinCost,ChosenMode] = min(Costv);
                 % Save mode history for visualization
-                Mode(bCount,f+1,q) = ChosenMode;
+                Mode123(bCount,f+1,q) = ChosenMode;
                 % Accumulate Nbits used to get total Bits/Frame
                 Nbits3(f+1,q) = Nbits3(f+1,q) + Rates(ChosenMode,q);
                 
@@ -265,10 +300,10 @@ for f=1:Nframes-1
                         Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q);
                 elseif ChosenMode == 2  %copy block from previous frame
                     Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
-                        Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q);
-                else   %inter mode, take motion compensated block
+                        Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q);
+                else   %inter mode, take previous block and shift it
                     Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
-                        MotionCompq(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q);
+                        Encoded3(y_compensated,x_compensated,f,q);
                 end
                 
                 bCount = bCount+1;
@@ -277,10 +312,11 @@ for f=1:Nframes-1
     end
 end
 % Visualize Modes distribution for the most complex encoder
+
 for q=1:length(q_step)
-    mode_hist(q,:) = hist(reshape(Mode(:,:,q),1,numel(Mode(:,:,q))),[1,2,3]);
+    mode_hist123(q,:) = hist(reshape(Mode123(:,:,q),1,numel(Mode123(:,:,q))),[1,2,3]);
 end
-bar(mode_hist,'stacked');
+bar(mode_hist123,'stacked');
 
 % Compute error for encoder3
 for q=1:length(q_step)   
@@ -331,10 +367,10 @@ for q=1:length(q_step)
 end
 close(v);
 
-Play Videos
-implay(uint8(Frames),FPS); 
-implay(uint8(Residual),FPS);  
-implay(uint8(Predicted3),FPS);
+% Play Videos
+% implay(uint8(Frames),FPS); 
+% implay(uint8(Residual),FPS);  
+% implay(uint8(Predicted3),FPS);
 
 %%%%%%=======================================================%%%%
 
