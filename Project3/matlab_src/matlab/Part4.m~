@@ -99,9 +99,11 @@ for f=1:Nframes-1
                 
                 % Encode video
                 if ChosenMode == 1    %intra mode - set to Encoded1
+                    m=1
                     Encoded2(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
                         Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q);
                 elseif ChosenMode == 2  %copy block from previous frame
+                    m=2
                     Encoded2(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
                         Encoded1(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q);
                 end
@@ -312,29 +314,21 @@ ylabel('PSNR [dB]');
 hold off
 
 %Prepare Videos for writing
-Framesw(:,:,1,:) = Frames;   %original
-Residualqw(:,:,1,:,:) = Residualq;  %residual of mode 3
-Predicted3qw(:,:,1,:,:) = Predicted3q; %mode 3 only without summing residuals
-MotionCompqw(:,:,1,:,:) = MotionCompq;   %mode 3 only adding residuals
-Encoded1w(:,:,1,:,:) = Encoded1; %intra mode only
-Encoded3w(:,:,1,:,:) = Encoded3; %All 3 modes available
-% Write Videos
-v = VideoWriter('Results\ResidualsQuantized.avi','Grayscale AVI');
-open(v);
-for q=1:length(q_step)
-    minv = min(Residualqw(:,:,:,:,q));
-    MIN = min(minv(:));
-    maxv = max(Residualqw(:,:,:,:,q));
-    MAX = max(maxv(:));
-    towrite = (Residualqw(:,:,:,:,q)-MIN)/(MAX-MIN);
-    writeVideo(v,towrite);
-end
-close(v);
-
-Play Videos
-implay(uint8(Frames),FPS); 
-implay(uint8(Residual),FPS);  
-implay(uint8(Predicted3),FPS);
+% Framesw(:,:,1,:) = Frames;   %original
+% Residualw(:,:,1,:) = Residual;  %residual of mode 3
+% Predictedw(:,:,1,:) = Predicted3; %mode 3 without summing residuals
+% MotionCompqw(:,:,1,:,:) = MotionCompq;   %mode3 only
+% Encoded1w(:,:,1,:,:) = Encoded1; %mode1 only
+% % Write Videos
+% v = VideoWriter('Results\OnlyMode1.avi','Grayscale AVI');
+% open(v);
+% writeVideo(v,uint8(Reconstructed1w(:,:,:,:,4)));
+% close(v);
+% 
+% Play Videos
+% implay(uint8(Frames),FPS); 
+% implay(uint8(Residual),FPS);  
+% implay(uint8(Predicted3),FPS);
 
 %%%%%%=======================================================%%%%
 
