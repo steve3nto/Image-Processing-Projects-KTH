@@ -1,3 +1,4 @@
+% EntropyRate
 % Computes bits given a frame of quantized block DCT coefficients
 % using information entropy to estimate the lower bound of the
 % bits needed

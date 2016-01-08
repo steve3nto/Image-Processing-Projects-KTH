@@ -176,6 +176,7 @@ MotVecsIndices = zeros(1,99,Nframes-1);
 Predicted3 = zeros(video_height,video_width,Nframes); %mode 3 
 Predicted3q = zeros(video_height,video_width,Nframes,length(q_step));
 Residual = zeros(video_height,video_width,Nframes);
+ResidualCopy = zeros(video_height,video_width,Nframes);
 ResidualDCT = zeros(video_height,video_width,Nframes);
 Residualq = zeros(video_height,video_width,Nframes,length(q_step));
 ResidualDCTq = zeros(video_height,video_width,Nframes,length(q_step));
@@ -205,6 +206,7 @@ for f=1:Nframes-1
     Predicted3(:,:,f+1) = PredictFrame(FramesPadded(:,:,f),...
                                 MotVecs(:,:,f),bSize,[dy_max dx_max]);
     Residual(:,:,f+1) =  Frames(:,:,f+1) - Predicted3(:,:,f+1);
+    ResidualCopy(:,:,f+1) =  Frames(:,:,f+1) - Frames(:,:,f); 
     ResidualDCT(:,:,f+1) = blockproc(Residual(:,:,f+1),[8 8],@dctz2);
     
     % Estimate average bitrate needed for all motion vectors
@@ -268,7 +270,7 @@ Encoded3 = zeros(video_height,video_width,Nframes,length(q_step));
 for q=1:length(q_step)
     Encoded3(:,:,1,q) = Encoded1(:,:,1,q);
 end
-Nbits3 = zeros(Nframes,q);
+Nbits3 = zeros(Nframes,q);  %counts the bits used during the encoding
 Nbits3(1,:) = R1*Nblocks;  %bits used for intra mode of 1st frame
 % Loop over all frames and scan frames block by block
 for f=1:Nframes-1 
@@ -387,6 +389,8 @@ hold off
 
 %Prepare Videos for writing
 Framesw(:,:,1,:) = Frames;   %original
+Residualw(:,:,1,:) = Residual;    %perfect residual
+ResidualCopyw(:,:,1,:) = ResidualCopy;    %perfect residual
 Residualqw(:,:,1,:,:) = Residualq;  %residual of mode 3
 Predicted3qw(:,:,1,:,:) = Predicted3q; %mode 3 only without summing residuals
 MotionCompqw(:,:,1,:,:) = MotionCompq;   %mode 3 only adding residuals
@@ -394,7 +398,7 @@ Encoded1w(:,:,1,:,:) = Encoded1; %intra mode only
 Encoded2w(:,:,1,:,:) = Encoded2; %intra and copy
 Encoded3w(:,:,1,:,:) = Encoded3; %All 3 modes available
 %Write Videos
-v = VideoWriter('Results\Encoded3.avi','Grayscale AVI');
+v = VideoWriter('Results\PerfectResidual(no compensation).avi','Grayscale AVI');
 open(v);
 % for q=1:length(q_step)
 %     minv = min(Residualqw(:,:,:,:,q));
@@ -404,8 +408,19 @@ open(v);
 %     towrite = (Residualqw(:,:,:,:,q)-MIN)/(MAX-MIN);
 %     writeVideo(v,towrite);
 % end
-writeVideo(v,uint8(Encoded3w(:,:,:,:,4)));
+writeVideo(v,uint8(ResidualCopyw));
 close(v);
+
+%Compute energy of example residual at frame 23
+residual_no_compensation = ResidualCopy(:,:,23);
+residual = Residual(:,:,23);
+energyr_no_compensation = sum(residual_no_compensation(:).^2);
+energyr = sum(residual(:).^2);
+subplot(1,2,1); imshow(residual_no_compensation,[]);
+title('Without Motion Compensation');
+subplot(1,2,2); imshow(residual,[]);
+title('With Motion Compensation');
+
 
 % Play Videos
 % implay(uint8(Frames),FPS); 
