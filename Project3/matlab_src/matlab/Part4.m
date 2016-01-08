@@ -10,7 +10,7 @@ video_height = 144;  %must be divisible by bSize
 FPS = 30;
 Nframes = 50;  %to be imported
 
-% test frames
+% test frame
 test = 255*imresize(checkerboard(100),[video_height video_width]);
 
 % Block Size for motion compensation
@@ -40,7 +40,8 @@ for i=-dy_max:dy_max
 end
 
 % import 50 frames of video
-V = yuv_import_y('mother-daughter_qcif.yuv',[video_width video_height],Nframes);
+V = yuv_import_y('foreman_qcif.yuv',[video_width video_height],Nframes);
+%V = yuv_import_y('mother-daughter_qcif.yuv',[video_width video_height],Nframes);
 
 % deconstruct cell array
 Frames = zeros(video_height,video_width,Nframes);
@@ -324,9 +325,10 @@ for f=1:Nframes-1
                 elseif ChosenMode == 2  %copy block from previous frame
                     Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
                         Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f,q);
-                else   %inter mode, take previous block and shift it
+                else   %inter mode, take previous shifted block + residual
                     Encoded3(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q) = ...
-                        Padded(y_compensated,x_compensated);
+                        Padded(y_compensated,x_compensated) + ...
+                        Residualq(bSize*(h-1)+hh,bSize*(w-1)+ww,f+1,q);
                 end
                 
                 bCount = bCount+1;
@@ -398,25 +400,26 @@ Encoded1w(:,:,1,:,:) = Encoded1; %intra mode only
 Encoded2w(:,:,1,:,:) = Encoded2; %intra and copy
 Encoded3w(:,:,1,:,:) = Encoded3; %All 3 modes available
 %Write Videos
-v = VideoWriter('Results\PerfectResidual(no compensation).avi','Grayscale AVI');
-open(v);
-% for q=1:length(q_step)
-%     minv = min(Residualqw(:,:,:,:,q));
-%     MIN = min(minv(:));
-%     maxv = max(Residualqw(:,:,:,:,q));
-%     MAX = max(maxv(:));
-%     towrite = (Residualqw(:,:,:,:,q)-MIN)/(MAX-MIN);
-%     writeVideo(v,towrite);
-% end
-
-%writeVideo(v,uint8(ResidualCopyw));
-close(v);
+% v = VideoWriter('Results\PerfectResidual(no compensation).avi','Grayscale AVI');
+% open(v);
+% % for q=1:length(q_step)
+% %     minv = min(Residualqw(:,:,:,:,q));
+% %     MIN = min(minv(:));
+% %     maxv = max(Residualqw(:,:,:,:,q));
+% %     MAX = max(maxv(:));
+% %     towrite = (Residualqw(:,:,:,:,q)-MIN)/(MAX-MIN);
+% %     writeVideo(v,towrite);
+% % end
+% 
+% %writeVideo(v,uint8(ResidualCopyw));
+% close(v);
 
 %Compute energy of example residual at frame 23
 residual_no_compensation = ResidualCopy(:,:,23);
 residual = Residual(:,:,23);
 energyr_no_compensation = sum(residual_no_compensation(:).^2);
 energyr = sum(residual(:).^2);
+figure;
 subplot(1,2,1); imshow(residual_no_compensation,[]);
 title('Without Motion Compensation');
 subplot(1,2,2); imshow(residual,[]);
