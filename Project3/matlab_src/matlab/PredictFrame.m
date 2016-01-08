@@ -1,4 +1,5 @@
-% Predicts next frame from given frame and block motion vectors
+% predFrame 
+%Predicts next frame from given frame and block motion vectors
 % Input
 %   imgI : The given frame, must be padded according to size of shifts
 %   motionVect : The motion vectors in a [2 x N_blocks] matrix
@@ -37,3 +38,4 @@ for i = 1+dy_max:bSize:row-bSize+1
 end
 
 predFrame = predF;
+end
