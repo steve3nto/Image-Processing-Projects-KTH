@@ -40,7 +40,7 @@ for i=-dy_max:dy_max
 end
 
 % import 50 frames of video
-V = yuv_import_y('foreman_qcif.yuv',[video_width video_height],Nframes);
+V = yuv_import_y('mother-daughter_qcif.yuv',[video_width video_height],Nframes);
 
 % deconstruct cell array
 Frames = zeros(video_height,video_width,Nframes);
@@ -394,7 +394,7 @@ Encoded1w(:,:,1,:,:) = Encoded1; %intra mode only
 Encoded2w(:,:,1,:,:) = Encoded2; %intra and copy
 Encoded3w(:,:,1,:,:) = Encoded3; %All 3 modes available
 %Write Videos
-v = VideoWriter('Results\Encoded3.avi','Grayscale AVI');
+v = VideoWriter('Results\Encoded3Madre.avi','Grayscale AVI');
 open(v);
 % for q=1:length(q_step)
 %     minv = min(Residualqw(:,:,:,:,q));
@@ -404,7 +404,9 @@ open(v);
 %     towrite = (Residualqw(:,:,:,:,q)-MIN)/(MAX-MIN);
 %     writeVideo(v,towrite);
 % end
-writeVideo(v,uint8(Encoded3w(:,:,:,:,4)));
+for q=1:length(q_step)
+    writeVideo(v,uint8(Encoded3w(:,:,:,:,q)));
+end
 close(v);
 
 % Play Videos
